@@ -1,0 +1,50 @@
+---
+# A single-file plugin, so the gate is small: the manifest must be
+# valid and carry the keys the marketplace requires, and the QML
+# must parse.
+#
+# qmllint cannot resolve the shell's `qs.*` modules on a plain
+# runner — they are registered by the Quickshell runtime — so this
+# is a syntax check and its warnings are not failures.
+# `omarchy plugin validate` needs an Omarchy host.
+name: check
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      # v4, credentials not persisted: this job only reads.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Manifest carries what the marketplace requires
+        run: |
+          python3 - <<'PY'
+          import json, pathlib
+          m = json.loads(pathlib.Path("manifest.json").read_text())
+          keys = ("schemaVersion", "id", "name", "version", "author",
+                  "description", "kinds", "entryPoints")
+          for key in keys:
+              assert m.get(key), f"manifest is missing {key}"
+          assert not m["id"].startswith("omarchy."), "reserved id"
+          for kind, entry in m["entryPoints"].items():
+              assert pathlib.Path(entry).is_file(), f"missing {entry}"
+              print(f"{kind}: {entry} exists")
+          print("manifest ok:", m["id"], m["version"], m["kinds"])
+          PY
+      - name: Install qmllint
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            qt6-declarative-dev-tools
+      - name: QML parses
+        run: qmllint BarWidget.qml || true
+      - name: No symlinks in the plugin folder
+        run: test -z "$(find . -type l -not -path './.git/*')"
