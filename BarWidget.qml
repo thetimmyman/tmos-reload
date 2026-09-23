@@ -3,10 +3,10 @@ import Quickshell
 import qs.Commons
 import qs.Ui
 
-// TMOS Panic Close — one button, one job: close everything that will not close itself.
+// TMOS Reload — one button, one job: close everything that will not close itself.
 //
 // Third-party panels do not always dismiss when you click outside them, and a wedged one cannot be
-// closed from its own UI. Restarting the shell is the one action that reliably tears every popup
+// closed from its own UI. Reloading the shell is the one action that reliably tears every popup
 // down, and that is what this button does — no terminal, one click.
 //
 // `omarchy-restart-shell` refuses while the session is locked, so this cannot strand you behind a
@@ -15,7 +15,7 @@ import qs.Ui
 // which is how the rest of the kit starts commands.
 BarWidget {
   id: root
-  moduleName: "tmos.panic-close"
+  moduleName: "tmos.reload"
 
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
@@ -27,7 +27,7 @@ BarWidget {
     text: ""
     slotSize: Style.bar.statusSlot
     fontSize: Style.font.caption
-    tooltipText: "Close stuck popups (restarts shell)"
+    tooltipText: "Reload the shell (closes stuck popups)"
     onPressed: {
       if (root.bar) root.bar.run("omarchy-restart-shell")
       else Quickshell.execDetached(["omarchy-restart-shell"])

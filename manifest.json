@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
-  "id": "tmos.panic-close",
-  "name": "TMOS Panic Close",
+  "id": "tmos.reload",
+  "name": "TMOS Reload",
   "version": "1.0.0",
   "author": "Timothy DeFreest",
   "license": "MIT",
-  "homepage": "https://github.com/thetimmyman/tmos-panic-close",
-  "description": "One bar button that restarts the Omarchy shell, which is the one action that reliably closes a wedged popup or panel.",
+  "homepage": "https://github.com/thetimmyman/tmos-reload",
+  "description": "One bar button that reloads the Omarchy shell, which is the one action that reliably closes a wedged popup or panel.",
   "kinds": [
     "bar-widget"
   ],
@@ -14,8 +14,8 @@
     "barWidget": "BarWidget.qml"
   },
   "barWidget": {
-    "displayName": "TMOS Panic Close",
-    "description": "Click to restart the shell and close every stuck popup.",
+    "displayName": "TMOS Reload",
+    "description": "Click to reload the shell and close every stuck popup.",
     "category": "System",
     "allowMultiple": false,
     "defaultSection": "right"
