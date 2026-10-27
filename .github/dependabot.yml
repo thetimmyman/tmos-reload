@@ -1,0 +1,26 @@
+version: 2
+
+# Version updates: weekly, early Monday (America/New_York). Minor and patch
+# updates are grouped into one PR; majors stay separate and ungrouped. Security
+# updates are not governed by this schedule or by cooldown.
+#
+# GitHub Actions is the only ecosystem with dependencies here (the project is
+# Python standard library and QML), and its minor and patch updates are
+# eligible for automerge (see dependabot-automerge.yml).
+
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "05:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 3
+    cooldown:
+      default-days: 3
+    groups:
+      github-actions-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"

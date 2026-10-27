@@ -1,0 +1,86 @@
+name: Dependabot automerge
+
+# For Dependabot PRs that are safe to take once CI is green, enable GitHub
+# auto-merge (squash), which merges only after the base branch required status
+# checks pass. Eligible: semver-patch and semver-minor updates, in the ecosystem
+# and directory combinations listed in the `case` below. Majors, and anything
+# not listed, stay open for review (deny by default).
+#
+# `pull_request`, not `pull_request_target`: nothing here checks out or runs PR
+# code. The job reads Dependabot's metadata and calls the GitHub API with the
+# job's GITHUB_TOKEN. Runs triggered by Dependabot get a read-only token unless
+# the workflow asks for more, so the job requests exactly what it uses.
+#
+# `directory` and `package-ecosystem` are read from the Dependabot branch name;
+# an unexpected value matches no pattern and the PR is simply not merged.
+#
+# This is a public repository, so the job runs on a GitHub-hosted runner. main
+# requires the check job, so auto-merge waits for it.
+
+on:
+  pull_request:
+
+permissions: {}
+
+concurrency:
+  group: dependabot-automerge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  automerge:
+    name: Enable auto-merge for eligible Dependabot PRs
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Read Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge when the PR is eligible
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          REPO: ${{ github.repository }}
+          BASE: ${{ github.event.pull_request.base.ref }}
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+          ECOSYSTEM: ${{ steps.metadata.outputs.package-ecosystem }}
+          DIRECTORY: ${{ steps.metadata.outputs.directory }}
+        run: |
+          set -euo pipefail
+
+          kind=other
+          case "$UPDATE_TYPE" in
+            version-update:semver-patch | version-update:semver-minor) kind=semver ;;
+          esac
+
+          eligible=false
+          case "$kind:$ECOSYSTEM:$DIRECTORY" in
+            semver:github_actions:/) eligible=true ;;
+          esac
+
+          if [ "$eligible" != true ]; then
+            # Auto-merge enabled for an earlier head must not outlive a change that is no longer eligible.
+            if [ "$(gh pr view "$PR_URL" --json autoMergeRequest --jq '.autoMergeRequest != null')" = true ]; then
+              gh pr merge --disable-auto "$PR_URL"
+            fi
+            echo "::notice::not eligible for auto-merge (${UPDATE_TYPE:-no semver bump} in $ECOSYSTEM:$DIRECTORY); left for manual review"
+            exit 0
+          fi
+
+          # Auto-merge merges immediately when the base branch has no required checks,
+          # so refuse to enable it unless branch protection or a ruleset requires some.
+          classic="$(gh api "repos/$REPO/branches/$BASE" --jq '(.protection.required_status_checks.contexts // []) | length')"
+          ruleset="$(gh api "repos/$REPO/rules/branches/$BASE" --jq '[.[] | select(.type == "required_status_checks")] | length')"
+          if [ "$classic" -eq 0 ] && [ "$ruleset" -eq 0 ]; then
+            echo "::error::$BASE has no required status checks; refusing to enable auto-merge"
+            exit 1
+          fi
+
+          gh pr merge --auto --squash "$PR_URL"
+          echo "::notice::auto-merge enabled ($kind update in $ECOSYSTEM:$DIRECTORY)"
